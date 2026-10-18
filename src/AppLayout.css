@@ -1,0 +1,97 @@
+.app-shell {
+  min-height: 100vh;
+  background: #fff;
+  color: #032b41;
+}
+
+.app-shell,
+.app-shell * {
+  box-sizing: border-box;
+}
+
+.app-shell .fy-sidebar {
+  overflow-y: auto;
+}
+
+.app-shell .fy-nav-item {
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 0;
+  background: transparent;
+  font-family: inherit;
+  line-height: 1.5;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.app-shell .fy-nav-item.active {
+  background: #edf6f0;
+}
+
+.app-shell .fy-nav-item:not(:disabled):hover {
+  background: #e8efeb;
+}
+
+.app-shell .fy-nav-item:disabled {
+  cursor: not-allowed;
+}
+
+.app-shell-main {
+  min-width: 0;
+  margin-left: 200px;
+}
+
+.app-mobile-toolbar {
+  display: none;
+}
+
+.app-shell .player-bar {
+  left: 200px;
+  right: 0;
+  width: auto;
+}
+
+.app-shell .fy-logo {
+  text-decoration: none;
+}
+
+.app-shell .fy-nav-item:focus-visible,
+.app-shell .fy-mobile-button:focus-visible,
+.app-shell .fy-logo:focus-visible {
+  outline: 2px solid #0365f2;
+  outline-offset: -4px;
+}
+
+@media (max-width: 700px) {
+  .app-shell-main {
+    margin-left: 0;
+  }
+
+  .app-mobile-toolbar {
+    min-height: 56px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f7faf9;
+  }
+
+  .app-mobile-toolbar span {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .app-shell .fy-sidebar:not(.open) {
+    visibility: hidden;
+  }
+
+  .app-shell .fy-sidebar.open {
+    visibility: visible;
+  }
+
+  .app-shell .player-bar {
+    left: 0;
+  }
+}

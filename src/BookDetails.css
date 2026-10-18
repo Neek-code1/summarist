@@ -1,0 +1,291 @@
+.bd-page {
+  min-height: 100vh;
+  background: #fff;
+  color: #032b41;
+}
+
+/* Header */
+
+.bd-header {
+  min-height: 80px;
+  padding: 20px 32px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.bd-logo {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.bd-header-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 20px;
+}
+
+.bd-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #0365f2;
+  font-size: 14px;
+}
+
+/* Book overview */
+
+.bd-content {
+  max-width: 1070px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.bd-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  align-items: start;
+  gap: 64px;
+  padding-bottom: 36px;
+  border-bottom: 1px solid #e1e7ea;
+}
+
+.bd-information {
+  min-width: 0;
+}
+
+.bd-information h1 {
+  font-size: 32px;
+  line-height: 1.3;
+  margin-bottom: 16px;
+}
+
+.bd-premium {
+  display: inline-block;
+  padding: 5px 12px;
+  margin-left: 12px;
+  border-radius: 14px;
+  background: #032b41;
+  color: #fff;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.bd-author {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.bd-subtitle {
+  font-size: 20px;
+  line-height: 1.5;
+  color: #52616b;
+  margin-bottom: 24px;
+}
+
+.bd-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 20px 0;
+  margin-bottom: 24px;
+  border-top: 1px solid #e1e7ea;
+  border-bottom: 1px solid #e1e7ea;
+  font-size: 14px;
+}
+
+.bd-metadata span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bd-cover {
+  width: 100%;
+  max-height: 350px;
+  object-fit: contain;
+}
+
+/* Read and listen */
+
+.bd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.bd-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  min-width: 130px;
+  padding: 12px 24px;
+  border-radius: 4px;
+  background: #032b41;
+  color: #fff;
+  font-size: 16px;
+}
+
+.bd-button:hover {
+  background: #075174;
+}
+
+/* Save to library */
+
+.bd-save {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  margin-top: 18px;
+  color: #0365f2;
+  font-size: 16px;
+  text-align: left;
+}
+
+.bd-save:hover {
+  color: #0348ad;
+}
+
+.bd-save-status {
+  color: #52616b;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.bd-save-status a {
+  color: #0365f2;
+  text-decoration: underline;
+}
+
+/* Description */
+
+.bd-description {
+  max-width: 800px;
+  padding-top: 32px;
+}
+
+.bd-description h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.bd-description p {
+  margin-bottom: 32px;
+  font-size: 16px;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+
+.bd-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.bd-tags span {
+  background: #f1f6f4;
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Messages */
+
+.bd-notice {
+  margin-top: 18px;
+  color: #52616b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bd-error {
+  color: #b42318;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Loading */
+
+.bd-loading {
+  background: #edf0f2;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.bd-loading-title {
+  height: 36px;
+  width: 65%;
+}
+
+.bd-loading-line {
+  height: 20px;
+  width: 40%;
+}
+
+.bd-loading-cover {
+  height: 300px;
+  width: 210px;
+  max-width: 100%;
+}
+
+/* Keyboard focus */
+
+.bd-page a:focus-visible,
+.bd-page button:focus-visible {
+  outline: 2px solid #0365f2;
+  outline-offset: 4px;
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+  .bd-header {
+    padding: 20px;
+  }
+
+  .bd-logo {
+    font-size: 22px;
+  }
+
+  .bd-overview {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .bd-cover {
+    grid-row: 1;
+    height: 240px;
+  }
+
+  .bd-information h1 {
+    font-size: 28px;
+  }
+
+  .bd-subtitle {
+    font-size: 18px;
+  }
+
+  .bd-content {
+    padding: 28px 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .bd-header-links {
+    gap: 12px;
+  }
+
+  .bd-header-links .bd-back {
+    font-size: 12px;
+  }
+}
