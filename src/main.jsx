@@ -1,6 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  HashRouter,
+  Link,
+  Route,
+  Routes,
+} from "react-router-dom";
 
 import App from "./App.jsx";
 import AppLayout from "./AppLayout.jsx";
@@ -14,9 +20,12 @@ import ProtectedRoute from "./ProtectedRoute.jsx";
 
 import "./style.css";
 
+const Router =
+  import.meta.env.BASE_URL === "/summarist/" ? HashRouter : BrowserRouter;
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <Router>
       <Routes>
         <Route path="/" element={<App />} />
 
@@ -54,6 +63,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
       </Routes>
-    </BrowserRouter>
+    </Router>
   </React.StrictMode>,
 );
