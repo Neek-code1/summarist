@@ -19,31 +19,27 @@ for (const name of [
   "STRIPE_YEARLY_PRICE_ID",
 ]) {
   if (!process.env[name]) {
-    throw new Error(`Missing ${name} in server/.env`);
+    throw new Error(`Missing environment variable: ${name}`);
   }
 }
 
 if (!process.env.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
-  throw new Error("Use a Stripe secret key starting with sk_test_.");
+  throw new Error("Use a Stripe test key starting with sk_test_.");
 }
 
-const credentialsPath = path.join(
-  __dirname,
-  "serviceAccountKey.json"
-);
+const credentialsPath = [
+  "/etc/secrets/serviceAccountKey.json",
+  path.join(__dirname, "serviceAccountKey.json"),
+].find((filePath) => fs.existsSync(filePath));
 
-if (!fs.existsSync(credentialsPath)) {
-  throw new Error(
-    "Place serviceAccountKey.json inside the server folder."
-  );
+if (!credentialsPath) {
+  throw new Error("Add serviceAccountKey.json as a Render secret file.");
 }
 
-const serviceAccount = JSON.parse(
-  fs.readFileSync(credentialsPath, "utf8")
-);
+const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
 
 if (serviceAccount.project_id !== "summarist-a46d4") {
-  throw new Error("Use credentials for summarist-a46d4.");
+  throw new Error("Use Firebase credentials for summarist-a46d4.");
 }
 
 const firebaseApp = initializeApp({
@@ -54,16 +50,27 @@ const firebaseAuth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const app = express();
-const clientUrl = new URL(process.env.CLIENT_URL).origin;
+const frontend = new URL(process.env.CLIENT_URL);
+const clientOrigin = frontend.origin;
 const port = Number(process.env.PORT || 4242);
+
+function pageUrl(route) {
+  if (frontend.hostname.endsWith(".github.io")) {
+    const basePath = frontend.pathname.replace(/\/?$/, "/");
+    return `${clientOrigin}${basePath}#${route}`;
+  }
+
+  return `${clientOrigin}${route}`;
+}
+
+const app = express();
 
 app.use(
   cors({
-    origin: clientUrl,
+    origin: clientOrigin,
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.use(express.json({ limit: "10kb" }));
@@ -71,7 +78,7 @@ app.use(express.json({ limit: "10kb" }));
 function logError(stage, error) {
   const message = String(error.message || "").replace(
     /\b(?:sk|rk)_(?:test|live)_[A-Za-z0-9_]+/g,
-    "[REDACTED]"
+    "[REDACTED]",
   );
 
   console.error("Request failed:", {
@@ -93,20 +100,14 @@ async function requireUser(req, res, next) {
   }
 
   try {
-    req.user = await firebaseAuth.verifyIdToken(
-      authorization.slice(7),
-      true
-    );
+    req.user = await firebaseAuth.verifyIdToken(authorization.slice(7), true);
   } catch {
     return res.status(401).json({
       error: "Your session expired. Please log in again.",
     });
   }
 
-  if (
-    req.user.firebase?.sign_in_provider === "anonymous" ||
-    !req.user.email
-  ) {
+  if (req.user.firebase?.sign_in_provider === "anonymous" || !req.user.email) {
     return res.status(403).json({
       error: "Please use an email account to subscribe.",
     });
@@ -145,13 +146,9 @@ async function loadSubscription(uid) {
 
   if (!subscriptionId) return null;
 
-  const subscription =
-    await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-  if (
-    subscription.livemode ||
-    subscription.metadata.firebaseUID !== uid
-  ) {
+  if (subscription.livemode || subscription.metadata.firebaseUID !== uid) {
     throw new Error("Subscription account mismatch.");
   }
 
@@ -171,6 +168,10 @@ async function getUserSubscription(uid) {
         cancelAtPeriodEnd: false,
       };
 }
+
+app.get("/", (req, res) => {
+  res.json({ status: "ok", service: "Summarist checkout server" });
+});
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", mode: "Stripe test mode" });
@@ -213,7 +214,7 @@ app.post("/api/portal", requireUser, async (req, res) => {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${clientUrl}/settings`,
+      return_url: pageUrl("/settings"),
     });
 
     res.json({ url: session.url });
@@ -221,8 +222,7 @@ app.post("/api/portal", requireUser, async (req, res) => {
     logError("Opening customer portal", error);
 
     res.status(500).json({
-      error:
-        "Unable to open subscription management. Check the server terminal and your Stripe portal settings.",
+      error: "Unable to open subscription management.",
     });
   }
 });
@@ -243,8 +243,7 @@ app.post("/api/verify-checkout", requireUser, async (req, res) => {
   }
 
   try {
-    const session =
-      await stripe.checkout.sessions.retrieve(sessionId);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (
       session.livemode ||
@@ -268,8 +267,7 @@ app.post("/api/verify-checkout", requireUser, async (req, res) => {
         ? session.subscription
         : session.subscription.id;
 
-    const subscription =
-      await stripe.subscriptions.retrieve(subscriptionId);
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
     if (subscription.metadata.firebaseUID !== req.user.uid) {
       return res.status(403).json({
@@ -291,16 +289,19 @@ app.post("/api/verify-checkout", requireUser, async (req, res) => {
       });
     }
 
-    await db.collection("billing").doc(req.user.uid).set(
-      {
-        subscriptionId,
-        customerId:
-          typeof session.customer === "string"
-            ? session.customer
-            : session.customer?.id || null,
-      },
-      { merge: true }
-    );
+    await db
+      .collection("billing")
+      .doc(req.user.uid)
+      .set(
+        {
+          subscriptionId,
+          customerId:
+            typeof session.customer === "string"
+              ? session.customer
+              : session.customer?.id || null,
+        },
+        { merge: true },
+      );
 
     res.json(subscriptionDetails(subscription));
   } catch (error) {
@@ -340,17 +341,13 @@ app.post("/api/checkout", requireUser, async (req, res) => {
     stage = "Retrieving Stripe price";
     const price = await stripe.prices.retrieve(priceId);
 
-    const expectedInterval =
-      selectedPlan === "yearly" ? "year" : "month";
-    const expectedAmount =
-      selectedPlan === "yearly" ? 9999 : 999;
-
     if (
       !price.active ||
       price.livemode ||
       price.currency !== "usd" ||
-      price.unit_amount !== expectedAmount ||
-      price.recurring?.interval !== expectedInterval ||
+      price.unit_amount !== (selectedPlan === "yearly" ? 9999 : 999) ||
+      price.recurring?.interval !==
+        (selectedPlan === "yearly" ? "year" : "month") ||
       price.recurring?.interval_count !== 1
     ) {
       return res.status(400).json({
@@ -380,10 +377,9 @@ app.post("/api/checkout", requireUser, async (req, res) => {
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: subscriptionData,
       success_url:
-        `${clientUrl}/choose-plan?checkout=success` +
-        "&session_id={CHECKOUT_SESSION_ID}",
-      cancel_url:
-        `${clientUrl}/choose-plan?checkout=cancelled`,
+        pageUrl("/choose-plan") +
+        "?checkout=success&session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: pageUrl("/choose-plan") + "?checkout=cancelled",
     });
 
     res.json({ url: session.url });
@@ -391,13 +387,13 @@ app.post("/api/checkout", requireUser, async (req, res) => {
     logError(stage, error);
 
     res.status(500).json({
-      error: "Checkout could not start. Check the server terminal.",
+      error: "Checkout could not start. Please try again.",
     });
   }
 });
 
-app.listen(port, "127.0.0.1", () => {
-  console.log(`Checkout server: http://localhost:${port}`);
-  console.log(`Frontend allowed: ${clientUrl}`);
+app.listen(port, "0.0.0.0", () => {
+  console.log(`Summarist server listening on port ${port}`);
+  console.log(`Frontend allowed: ${clientOrigin}`);
   console.log("Stripe test mode enabled.");
 });
