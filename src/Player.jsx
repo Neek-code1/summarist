@@ -5,6 +5,7 @@ import useLibrary from "./useLibrary";
 import "./Player.css";
 
 const API = "https://us-central1-summaristt.cloudfunctions.net";
+const FONT_SIZES = [16, 20, 24, 28];
 
 function formatTime(seconds) {
   if (!Number.isFinite(seconds)) return "0:00";
@@ -36,10 +37,12 @@ export default function Player() {
   const [ready, setReady] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [retry, setRetry] = useState(0);
+  const [fontSize, setFontSize] = useState(20);
 
   useEffect(() => {
     const controller = new AbortController();
     const requestToken = {};
+
     requestRef.current = requestToken;
     savingFinishedRef.current = false;
 
@@ -136,7 +139,10 @@ export default function Player() {
 
     if (!audio || !Number.isFinite(audio.duration)) return;
 
-    audio.currentTime = Math.max(0, Math.min(audio.duration, nextTime));
+    audio.currentTime = Math.max(
+      0,
+      Math.min(audio.duration, nextTime),
+    );
 
     setCurrentTime(audio.currentTime);
   }
@@ -169,7 +175,9 @@ export default function Player() {
       }
     } catch {
       if (requestRef.current === requestToken) {
-        setFinishError("Audio finished, but your progress could not be saved.");
+        setFinishError(
+          "Audio finished, but your progress could not be saved.",
+        );
       }
     } finally {
       if (requestRef.current === requestToken) {
@@ -232,7 +240,43 @@ export default function Player() {
 
             <p className="player-author">{book.author}</p>
 
-            <div className="player-summary">
+            <div
+              className="player-font-controls"
+              role="group"
+              aria-label="Reading font size"
+            >
+              <span className="player-font-label">Font size</span>
+
+              <div className="player-font-options">
+                {FONT_SIZES.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`player-font-button ${
+                      fontSize === size ? "selected" : ""
+                    }`}
+                    style={{ fontSize: `${size}px` }}
+                    aria-label={`Set reading font size to ${size} pixels`}
+                    aria-pressed={fontSize === size}
+                    aria-controls="player-summary"
+                    onClick={() => setFontSize(size)}
+                  >
+                    Aa
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div
+              id="player-summary"
+              className="player-summary"
+              style={{
+                fontSize: `${fontSize}px`,
+                lineHeight: 1.8,
+                whiteSpace: "pre-line",
+                overflowWrap: "anywhere",
+              }}
+            >
               {book.summary || "No summary is available for this book."}
             </div>
           </>
