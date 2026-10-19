@@ -2,11 +2,16 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.auth-panel,
+.auth-panel * {
+  box-sizing: border-box;
 }
 
 .auth-panel {
@@ -14,6 +19,7 @@
   width: 400px;
   max-width: 100%;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   padding: 48px 32px 0;
   border-radius: 8px;
@@ -23,54 +29,103 @@
 }
 
 .auth-panel h2 {
+  margin: 0 0 24px;
   font-size: 20px;
   font-weight: 700;
-  margin-bottom: 24px;
+  line-height: 1.4;
+}
+
+.auth-panel button {
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .auth-panel .auth-close {
   position: absolute;
   top: 8px;
-  right: 14px;
-  padding: 4px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #032b41;
   font-size: 32px;
   line-height: 1;
-  color: #032b41;
 }
 
 .auth-panel .auth-button {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   width: 100%;
-  min-height: 40px;
+  min-height: 42px;
   padding: 10px 16px;
+  border: 0;
   border-radius: 4px;
   background: #2bd97c;
   color: #032b41;
   font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  transition:
+    background-color 150ms ease,
+    opacity 150ms ease;
 }
 
-.auth-panel .auth-button:hover {
+.auth-panel .auth-button:hover:not(:disabled) {
   background: #20ba68;
 }
 
 .auth-panel .auth-guest {
+  padding-right: 40px;
+  padding-left: 40px;
   background: #3a579d;
   color: #fff;
 }
 
-.auth-panel .auth-guest:hover {
+.auth-panel .auth-guest:hover:not(:disabled) {
   background: #2d467f;
+}
+
+.auth-panel .auth-guest > svg {
+  position: absolute;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+}
+
+.auth-panel .auth-google {
+  min-height: 42px;
+}
+
+/* JSX currently supplies this button's background inline. */
+.auth-panel .auth-google:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px #b8c5d3;
+}
+
+.auth-panel .auth-google > img {
+  flex-shrink: 0;
+}
+
+.auth-panel button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .auth-divider {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin: 20px 0;
+  margin: 16px 0;
   color: #6b757b;
   font-size: 14px;
+  line-height: 1.4;
 }
 
 .auth-divider::before,
@@ -85,17 +140,27 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  margin: 0;
 }
 
 .auth-panel input {
   width: 100%;
   height: 42px;
+  padding: 0 12px;
   border: 2px solid #bac8ce;
   border-radius: 4px;
-  padding: 0 12px;
-  font-size: 14px;
-  color: #032b41;
   background: #fff;
+  color: #032b41;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.auth-panel input::placeholder {
+  color: #6b757b;
+}
+
+.auth-panel input:disabled {
+  background: #f5f7f8;
 }
 
 .auth-panel input:focus-visible,
@@ -115,41 +180,71 @@
 }
 
 .auth-message {
+  margin: 0;
+  color: #52616b;
   font-size: 14px;
   line-height: 1.5;
-  color: #52616b;
+  overflow-wrap: anywhere;
 }
 
 .auth-panel .auth-link {
   display: block;
   margin: 20px auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #116be9;
   font-size: 14px;
+  line-height: 1.5;
+}
+
+.auth-panel .auth-link:hover:not(:disabled) {
+  text-decoration: underline;
 }
 
 .auth-panel .auth-switch {
   display: block;
   width: calc(100% + 64px);
   margin: 24px -32px 0;
-  padding: 24px 16px;
+  padding: 20px 16px;
   background: #f1f6f4;
   color: #032b41;
-  font-size: 16px;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-.auth-switch span {
-  color: #116be9;
+.auth-panel .auth-switch .auth-link {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
 }
 
 @media (max-width: 420px) {
+  .auth-overlay {
+    padding: 16px;
+  }
+
   .auth-panel {
-    padding-right: 24px;
-    padding-left: 24px;
+    padding: 44px 24px 0;
+  }
+
+  .auth-panel h2 {
+    font-size: 19px;
+  }
+
+  .auth-panel .auth-button {
+    font-size: 14px;
   }
 
   .auth-panel .auth-switch {
     width: calc(100% + 48px);
     margin-right: -24px;
     margin-left: -24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-panel .auth-button {
+    transition: none;
   }
 }

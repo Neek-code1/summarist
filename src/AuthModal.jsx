@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   sendPasswordResetEmail,
   signInAnonymously,
   signInWithEmailAndPassword,
+  signInWithPopup,
 } from "firebase/auth";
+import { FaUser } from "react-icons/fa";
 import { auth } from "./firebase";
 import "./AuthModal.css";
 
@@ -13,27 +16,47 @@ function getErrorMessage(error) {
   switch (error.code) {
     case "auth/invalid-email":
       return "Please enter a valid email address.";
+
     case "auth/email-already-in-use":
       return "An account already uses this email. Try logging in.";
+
     case "auth/weak-password":
       return "Please choose a stronger password with at least 6 characters.";
+
     case "auth/password-does-not-meet-requirements":
-      return "Your password does not meet the account requirements. Try a longer password with uppercase and lowercase letters, numbers, and symbols.";
+      return "Try a longer password with uppercase and lowercase letters, numbers, and symbols.";
+
     case "auth/invalid-credential":
     case "auth/user-not-found":
     case "auth/wrong-password":
       return "The email or password is incorrect.";
+
     case "auth/user-disabled":
       return "This account has been disabled.";
+
     case "auth/too-many-requests":
       return "Too many attempts. Please wait a little and try again.";
+
     case "auth/network-request-failed":
       return "Unable to connect. Check your internet connection.";
+
     case "auth/operation-not-allowed":
     case "auth/admin-restricted-operation":
       return "This login method is not enabled in Firebase.";
+
     case "auth/unauthorized-domain":
-      return "This website address needs to be authorized in Firebase.";
+      return "Add this website's domain to Firebase Authentication's authorized domains.";
+
+    case "auth/popup-blocked":
+      return "Your browser blocked Google sign-in. Allow popups for this website and try again.";
+
+    case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
+      return "Google sign-in was cancelled. Please try again.";
+
+    case "auth/account-exists-with-different-credential":
+      return "This email already uses another login method. Sign in using your original method.";
+
     default:
       return "Something went wrong. Please try again.";
   }
@@ -49,19 +72,21 @@ export default function AuthModal({ onClose }) {
   const [mode, setMode] = useState("login");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [activeAction, setActiveAction] = useState("");
 
   useEffect(() => {
     mountedRef.current = true;
 
     const previousFocus = document.activeElement;
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
 
+    document.body.style.overflow = "hidden";
     emailRef.current?.focus();
 
     function handleKeyDown(event) {
       if (event.key === "Escape" && !busyRef.current) {
         onClose();
+        return;
       }
 
       if (event.key !== "Tab") return;
@@ -111,6 +136,7 @@ export default function AuthModal({ onClose }) {
 
   function changeMode(nextMode) {
     if (busyRef.current) return;
+
     setMode(nextMode);
     setMessage("");
   }
@@ -119,17 +145,43 @@ export default function AuthModal({ onClose }) {
     if (!busyRef.current) onClose();
   }
 
+  function startAction(action) {
+    if (busyRef.current) return false;
+
+    busyRef.current = true;
+    setBusy(true);
+    setActiveAction(action);
+    setMessage("");
+
+    return true;
+  }
+
+  function finishAction() {
+    busyRef.current = false;
+
+    if (mountedRef.current) {
+      setBusy(false);
+      setActiveAction("");
+    }
+  }
+
+  function finishLogin() {
+    if (!mountedRef.current) return;
+
+    onClose();
+    navigate("/for-you");
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
+
     if (busyRef.current) return;
 
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") || "").trim();
     const password = String(formData.get("password") || "");
 
-    busyRef.current = true;
-    setBusy(true);
-    setMessage("");
+    if (!startAction("email")) return;
 
     try {
       if (mode === "reset") {
@@ -150,47 +202,49 @@ export default function AuthModal({ onClose }) {
         await signInWithEmailAndPassword(auth, email, password);
       }
 
-      if (mountedRef.current) {
-        onClose();
-        navigate("/for-you");
-      }
+      finishLogin();
     } catch (error) {
       if (mountedRef.current) {
         setMessage(getErrorMessage(error));
       }
     } finally {
-      busyRef.current = false;
-
-      if (mountedRef.current) {
-        setBusy(false);
-      }
+      finishAction();
     }
   }
 
   async function handleGuestLogin() {
-    if (busyRef.current) return;
-
-    busyRef.current = true;
-    setBusy(true);
-    setMessage("");
+    if (!startAction("guest")) return;
 
     try {
       await signInAnonymously(auth);
-
-      if (mountedRef.current) {
-        onClose();
-        navigate("/for-you");
-      }
+      finishLogin();
     } catch (error) {
       if (mountedRef.current) {
         setMessage(getErrorMessage(error));
       }
     } finally {
-      busyRef.current = false;
+      finishAction();
+    }
+  }
 
+  async function handleGoogleLogin() {
+    if (!startAction("google")) return;
+
+    try {
+      const provider = new GoogleAuthProvider();
+
+      provider.setCustomParameters({
+        prompt: "select_account",
+      });
+
+      await signInWithPopup(auth, provider);
+      finishLogin();
+    } catch (error) {
       if (mountedRef.current) {
-        setBusy(false);
+        setMessage(getErrorMessage(error));
       }
+    } finally {
+      finishAction();
     }
   }
 
@@ -205,7 +259,9 @@ export default function AuthModal({ onClose }) {
     <div
       className="auth-overlay"
       onClick={(event) => {
-        if (event.target === event.currentTarget) closeModal();
+        if (event.target === event.currentTarget) {
+          closeModal();
+        }
       }}
     >
       <div
@@ -237,7 +293,44 @@ export default function AuthModal({ onClose }) {
               onClick={handleGuestLogin}
               disabled={busy}
             >
-              Continue as a guest
+              <FaUser aria-hidden="true" style={{ marginRight: 12 }} />
+
+              {activeAction === "guest" ? "Logging in..." : "Login as a Guest"}
+            </button>
+
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
+
+            <button
+              type="button"
+              className="auth-button auth-google"
+              onClick={handleGoogleLogin}
+              disabled={busy}
+              style={{
+                backgroundColor: "#ffffff",
+                color: "#3c4043",
+                border: "1px solid #dadce0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+              }}
+            >
+              <img
+                src={`${import.meta.env.BASE_URL}google.png`}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  width: 20,
+                  height: 20,
+                  objectFit: "contain",
+                }}
+              />
+
+              {activeAction === "google"
+                ? "Connecting to Google..."
+                : "Login with Google"}
             </button>
 
             <div className="auth-divider">
@@ -290,7 +383,7 @@ export default function AuthModal({ onClose }) {
           )}
 
           <button type="submit" className="auth-button" disabled={busy}>
-            {busy
+            {activeAction === "email"
               ? "Please wait..."
               : mode === "signup"
                 ? "Sign up"
