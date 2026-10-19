@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
@@ -36,7 +36,11 @@ function BookCard({ book }) {
           <span className="fy-premium">Premium</span>
         )}
 
-        <img src={book.imageLink} alt={`${book.title} cover`} loading="lazy" />
+        <img
+          src={book.imageLink}
+          alt={`${book.title} cover`}
+          loading="lazy"
+        />
       </div>
 
       <h3>{book.title}</h3>
@@ -49,8 +53,7 @@ function BookCard({ book }) {
         </span>
 
         <span>
-          <FiStar />
-          {book.averageRating ?? "—"}
+          <FiStar /> {book.averageRating ?? "—"}
         </span>
       </div>
     </Link>
@@ -74,22 +77,35 @@ function LoadingBooks() {
 export default function ForYou() {
   const navigate = useNavigate();
 
+  const searchRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const logoutBusyRef = useRef(false);
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [books, setBooks] = useState(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
 
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState({
+    query: "",
+    results: [],
+    loading: false,
+    error: "",
+  });
 
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
 
-  async function handleLogout() {
-    if (loggingOut) return;
+  const searchTerm = query.trim();
+  const showSearch = searchOpen && Boolean(searchTerm);
+  const searching = search.loading || search.query !== searchTerm;
 
+  async function handleLogout() {
+    if (logoutBusyRef.current) return;
+
+    logoutBusyRef.current = true;
     setLoggingOut(true);
     setLogoutError("");
 
@@ -97,9 +113,16 @@ export default function ForYou() {
       await signOut(auth);
       navigate("/", { replace: true });
     } catch {
-      setLogoutError("Unable to log out. Please try again.");
+      logoutBusyRef.current = false;
       setLoggingOut(false);
+      setLogoutError("Unable to log out. Please try again.");
     }
+  }
+
+  function focusSearch() {
+    setMenuOpen(false);
+    setSearchOpen(true);
+    searchInputRef.current?.focus();
   }
 
   useEffect(() => {
@@ -138,34 +161,48 @@ export default function ForYou() {
   useEffect(() => {
     const controller = new AbortController();
 
-    setResults([]);
-    setSearchError("");
+    if (!searchTerm) {
+      setSearch({
+        query: "",
+        results: [],
+        loading: false,
+        error: "",
+      });
 
-    if (!query.trim()) {
-      setSearching(false);
       return () => controller.abort();
     }
 
-    setSearching(true);
+    setSearch({
+      query: searchTerm,
+      results: [],
+      loading: true,
+      error: "",
+    });
 
     const timer = setTimeout(async () => {
       try {
         const data = await fetchBooks(
-          `getBooksByAuthorOrTitle?search=${encodeURIComponent(query.trim())}`,
+          `getBooksByAuthorOrTitle?search=${encodeURIComponent(searchTerm)}`,
           controller.signal,
         );
 
-        if (!controller.signal.aborted) {
-          setResults(Array.isArray(data) ? data : []);
-        }
+        if (controller.signal.aborted) return;
+
+        setSearch({
+          query: searchTerm,
+          results: Array.isArray(data) ? data.filter((book) => book?.id) : [],
+          loading: false,
+          error: "",
+        });
       } catch (err) {
-        if (!controller.signal.aborted) {
-          setSearchError(err.message);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setSearching(false);
-        }
+        if (controller.signal.aborted) return;
+
+        setSearch({
+          query: searchTerm,
+          results: [],
+          loading: false,
+          error: err.message,
+        });
       }
     }, 300);
 
@@ -173,9 +210,30 @@ export default function ForYou() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [searchTerm]);
 
-  const isSearching = Boolean(query.trim());
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!searchRef.current?.contains(event.target)) {
+        setSearchOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setSearchOpen(false);
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   return (
     <div className="fy">
@@ -188,7 +246,10 @@ export default function ForYou() {
         />
       )}
 
-      <aside className={`fy-sidebar ${menuOpen ? "open" : ""}`}>
+      <aside
+        id="fy-sidebar"
+        className={`fy-sidebar ${menuOpen ? "open" : ""}`}
+      >
         <div className="fy-sidebar-heading">
           <Link to="/" className="fy-logo">
             Summarist
@@ -204,67 +265,71 @@ export default function ForYou() {
           </button>
         </div>
 
-        <nav aria-label="Main navigation">
-          <Link
-            className="fy-nav-item active"
-            to="/for-you"
-            aria-current="page"
-            onClick={() => {
-              setQuery("");
-              setMenuOpen(false);
-            }}
-          >
-            <FiHome /> For you
-          </Link>
+        <nav className="fy-sidebar-nav" aria-label="Main navigation">
+          <div className="fy-nav-top">
+            <Link
+              className="fy-nav-item active"
+              to="/for-you"
+              aria-current="page"
+              onClick={() => {
+                setQuery("");
+                setSearchOpen(false);
+                setMenuOpen(false);
+              }}
+            >
+              <FiHome /> For you
+            </Link>
 
-          <Link
-            className="fy-nav-item"
-            to="/library"
-            onClick={() => setMenuOpen(false)}
-          >
-            <FiBook /> My Library
-          </Link>
+            <Link
+              className="fy-nav-item"
+              to="/library"
+              onClick={() => setMenuOpen(false)}
+            >
+              <FiBook /> My Library
+            </Link>
 
-          <button type="button" className="fy-nav-item" disabled>
-            <FiStar /> Highlights
-          </button>
+            <button type="button" className="fy-nav-item" disabled>
+              <FiStar /> Highlights
+            </button>
 
-          <button type="button" className="fy-nav-item" disabled>
-            <FiSearch /> Search
-          </button>
+            <button
+              type="button"
+              className="fy-nav-item"
+              onClick={focusSearch}
+            >
+              <FiSearch /> Search
+            </button>
+          </div>
 
-          <Link
-            className="fy-nav-item"
-            to="/settings"
-            onClick={() => setMenuOpen(false)}
-          >
-            <FiSettings /> Settings
-          </Link>
+          <div className="fy-nav-bottom">
+            <Link
+              className="fy-nav-item"
+              to="/settings"
+              onClick={() => setMenuOpen(false)}
+            >
+              <FiSettings /> Settings
+            </Link>
 
-          <button type="button" className="fy-nav-item" disabled>
-            <FiHelpCircle /> Help & Support
-          </button>
+            <button type="button" className="fy-nav-item" disabled>
+              <FiHelpCircle /> Help & Support
+            </button>
 
-          <button
-            type="button"
-            className="fy-nav-item"
-            onClick={handleLogout}
-            disabled={loggingOut}
-            style={{
-              font: "inherit",
-              textAlign: "left",
-              cursor: loggingOut ? "wait" : "pointer",
-            }}
-          >
-            <FiLogOut />
-            {loggingOut ? "Logging out..." : "Log out"}
-          </button>
+            <button
+              type="button"
+              className="fy-nav-item"
+              onClick={handleLogout}
+              disabled={loggingOut}
+            >
+              <FiLogOut />
+              {loggingOut ? "Logging out..." : "Log out"}
+            </button>
 
-          {logoutError && (
-            <p className="fy-error" role="alert" style={{ padding: "0 16px" }}>
-              {logoutError}
-            </p>
-          )}
+            {logoutError && (
+              <p className="fy-error fy-logout-error" role="alert">
+                {logoutError}
+              </p>
+            )}
+          </div>
         </nav>
       </aside>
 
@@ -274,117 +339,184 @@ export default function ForYou() {
             type="button"
             className="fy-mobile-button"
             aria-label="Open navigation"
+            aria-expanded={menuOpen}
+            aria-controls="fy-sidebar"
             onClick={() => setMenuOpen(true)}
           >
             <FiMenu />
           </button>
 
-          <div className="fy-search">
+          <div
+            className="fy-search"
+            ref={searchRef}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setSearchOpen(false);
+              }
+            }}
+          >
             <input
+              ref={searchInputRef}
               type="search"
               aria-label="Search books by title or author"
+              aria-controls={showSearch ? "fy-search-results" : undefined}
               placeholder="Search for books"
+              autoComplete="off"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onFocus={() => setSearchOpen(true)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSearchOpen(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" && showSearch) {
+                  const firstResult = searchRef.current?.querySelector(
+                    ".fy-search-result",
+                  );
+
+                  if (firstResult) {
+                    event.preventDefault();
+                    firstResult.focus();
+                  }
+                }
+              }}
             />
 
             <FiSearch aria-hidden="true" />
+
+            {showSearch && (
+              <section
+                id="fy-search-results"
+                className="fy-search-popup"
+                aria-label="Book search results"
+                aria-busy={searching}
+              >
+                {searching ? (
+                  <p className="fy-search-message" role="status">
+                    Searching…
+                  </p>
+                ) : search.error ? (
+                  <p className="fy-search-message fy-error" role="alert">
+                    {search.error}
+                  </p>
+                ) : search.results.length ? (
+                  <>
+                    <p className="fy-search-count" role="status">
+                      {search.results.length}{" "}
+                      {search.results.length === 1 ? "book" : "books"} found
+                    </p>
+
+                    {search.results.map((book) => (
+                      <Link
+                        key={book.id}
+                        className="fy-search-result"
+                        to={`/book/${book.id}`}
+                        onClick={() => setSearchOpen(false)}
+                      >
+                        <img
+                          src={book.imageLink}
+                          alt=""
+                          loading="lazy"
+                        />
+
+                        <div className="fy-search-result-info">
+                          <h3>{book.title}</h3>
+                          <p>{book.author}</p>
+
+                          {book.subscriptionRequired && (
+                            <span className="fy-search-result-premium">
+                              Premium
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </>
+                ) : (
+                  <p className="fy-search-message" role="status">
+                    No books found. Try another title or author.
+                  </p>
+                )}
+              </section>
+            )}
           </div>
         </header>
 
         <main className="fy-content">
-          {isSearching ? (
-            <>
-              <h1>Search results</h1>
+          <h1>For you</h1>
 
-              {searching ? (
-                <LoadingBooks />
-              ) : searchError ? (
-                <p className="fy-error" role="alert">
-                  {searchError}
+          {error ? (
+            <div role="alert">
+              <p className="fy-error">{error}</p>
+
+              <button
+                type="button"
+                className="fy-retry"
+                onClick={() => setRetry((value) => value + 1)}
+              >
+                Try again
+              </button>
+            </div>
+          ) : !books ? (
+            <LoadingBooks />
+          ) : (
+            <>
+              <section className="fy-section">
+                <h2>Selected just for you</h2>
+
+                {books.selected.map((book) => (
+                  <Link
+                    className="fy-selected"
+                    key={book.id}
+                    to={`/book/${book.id}`}
+                  >
+                    <div>
+                      <p className="fy-selected-label">{book.subTitle}</p>
+                      <h3>{book.title}</h3>
+                      <p className="fy-author">{book.author}</p>
+
+                      {book.subscriptionRequired && (
+                        <span className="fy-selected-premium">
+                          Premium
+                        </span>
+                      )}
+                    </div>
+
+                    <img
+                      src={book.imageLink}
+                      alt={`${book.title} cover`}
+                    />
+                  </Link>
+                ))}
+              </section>
+
+              <section className="fy-section">
+                <h2>Recommended for you</h2>
+
+                <p className="fy-section-subtitle">
+                  We think you'll like these
                 </p>
-              ) : results.length ? (
+
                 <div className="fy-books">
-                  {results.map((book) => (
+                  {books.recommended.map((book) => (
                     <BookCard key={book.id} book={book} />
                   ))}
                 </div>
-              ) : (
-                <p>No books found. Try another title or author.</p>
-              )}
-            </>
-          ) : (
-            <>
-              <h1>For you</h1>
+              </section>
 
-              {error ? (
-                <div role="alert">
-                  <p className="fy-error">{error}</p>
+              <section className="fy-section">
+                <h2>Suggested books</h2>
 
-                  <button
-                    type="button"
-                    className="fy-retry"
-                    onClick={() => setRetry((value) => value + 1)}
-                  >
-                    Try again
-                  </button>
+                <p className="fy-section-subtitle">
+                  Browse those books
+                </p>
+
+                <div className="fy-books">
+                  {books.suggested.map((book) => (
+                    <BookCard key={book.id} book={book} />
+                  ))}
                 </div>
-              ) : !books ? (
-                <LoadingBooks />
-              ) : (
-                <>
-                  <section className="fy-section">
-                    <h2>Selected just for you</h2>
-
-                    {books.selected.map((book) => (
-                      <Link
-                        className="fy-selected"
-                        key={book.id}
-                        to={`/book/${book.id}`}
-                      >
-                        <div>
-                          <p className="fy-selected-label">{book.subTitle}</p>
-
-                          <h3>{book.title}</h3>
-                          <p className="fy-author">{book.author}</p>
-
-                          {book.subscriptionRequired && (
-                            <span className="fy-selected-premium">Premium</span>
-                          )}
-                        </div>
-
-                        <img src={book.imageLink} alt={`${book.title} cover`} />
-                      </Link>
-                    ))}
-                  </section>
-
-                  <section className="fy-section">
-                    <h2>Recommended for you</h2>
-
-                    <p className="fy-section-subtitle">
-                      We think you'll like these
-                    </p>
-
-                    <div className="fy-books">
-                      {books.recommended.map((book) => (
-                        <BookCard key={book.id} book={book} />
-                      ))}
-                    </div>
-                  </section>
-
-                  <section className="fy-section">
-                    <h2>Suggested books</h2>
-
-                    <p className="fy-section-subtitle">Browse those books</p>
-
-                    <div className="fy-books">
-                      {books.suggested.map((book) => (
-                        <BookCard key={book.id} book={book} />
-                      ))}
-                    </div>
-                  </section>
-                </>
-              )}
+              </section>
             </>
           )}
         </main>
