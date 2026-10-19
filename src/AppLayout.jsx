@@ -102,74 +102,78 @@ export default function AppLayout() {
           </button>
         </div>
 
-        <nav aria-label="Main navigation">
-          <NavLink
-            className={navClass}
-            to="/for-you"
-            onClick={closeMenu}
-          >
-            <FiHome /> For you
-          </NavLink>
-
-          <NavLink
-            className={navClass}
-            to="/library"
-            onClick={closeMenu}
-          >
-            <FiBook /> My Library
-          </NavLink>
-
-          <button
-            type="button"
-            className="fy-nav-item"
-            disabled
-          >
-            <FiStar /> Highlights
-          </button>
-
-          <Link
-            className="fy-nav-item"
-            to="/for-you"
-            onClick={closeMenu}
-          >
-            <FiSearch /> Search
-          </Link>
-
-          <NavLink
-            className={navClass}
-            to="/settings"
-            onClick={closeMenu}
-          >
-            <FiSettings /> Settings
-          </NavLink>
-
-          <button
-            type="button"
-            className="fy-nav-item"
-            disabled
-          >
-            <FiHelpCircle /> Help & Support
-          </button>
-
-          <button
-            type="button"
-            className="fy-nav-item"
-            onClick={handleLogout}
-            disabled={loggingOut}
-          >
-            <FiLogOut />
-            {loggingOut ? "Logging out..." : "Log out"}
-          </button>
-
-          {error && (
-            <p
-              className="fy-error"
-              role="alert"
-              style={{ padding: "12px 20px" }}
+        <nav className="fy-sidebar-nav" aria-label="Main navigation">
+          <div className="fy-nav-top">
+            <NavLink
+              className={navClass}
+              to="/for-you"
+              onClick={closeMenu}
             >
-              {error}
-            </p>
-          )}
+              <FiHome /> For you
+            </NavLink>
+
+            <NavLink
+              className={navClass}
+              to="/library"
+              onClick={closeMenu}
+            >
+              <FiBook /> My Library
+            </NavLink>
+
+            <button
+              type="button"
+              className="fy-nav-item"
+              disabled
+            >
+              <FiStar /> Highlights
+            </button>
+
+            <Link
+              className="fy-nav-item"
+              to="/for-you"
+              onClick={closeMenu}
+            >
+              <FiSearch /> Search
+            </Link>
+          </div>
+
+          <div className="fy-nav-bottom">
+            <NavLink
+              className={navClass}
+              to="/settings"
+              onClick={closeMenu}
+            >
+              <FiSettings /> Settings
+            </NavLink>
+
+            <button
+              type="button"
+              className="fy-nav-item"
+              disabled
+            >
+              <FiHelpCircle /> Help & Support
+            </button>
+
+            <button
+              type="button"
+              className="fy-nav-item"
+              onClick={handleLogout}
+              disabled={loggingOut}
+            >
+              <FiLogOut />
+              {loggingOut ? "Logging out..." : "Log out"}
+            </button>
+
+            {error && (
+              <p
+                className="fy-error"
+                role="alert"
+                style={{ padding: "12px 20px" }}
+              >
+                {error}
+              </p>
+            )}
+          </div>
         </nav>
       </aside>
 

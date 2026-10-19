@@ -95,3 +95,26 @@
     left: 0;
   }
 }
+.app-shell .fy-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.app-shell .fy-sidebar-heading {
+  flex-shrink: 0;
+}
+
+.app-shell .fy-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.app-shell .fy-nav-bottom {
+  margin-top: auto;
+  padding-top: 40px;
+  padding-bottom: 24px;
+}
