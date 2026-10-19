@@ -11,7 +11,7 @@ import {
 import { auth } from "./firebase";
 import "./ChoosePlan.css";
 
-const API_URL = "http://localhost:4242";
+const API_URL = "https://summarist.onrender.com";
 
 const plans = {
   yearly: {

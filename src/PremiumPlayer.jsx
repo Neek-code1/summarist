@@ -6,7 +6,7 @@ import Player from "./Player.jsx";
 const BOOK_API =
   "https://us-central1-summaristt.cloudfunctions.net";
 
-const SERVER_API = "http://localhost:4242";
+const SERVER_API = "https://summarist.onrender.com";
 
 export default function PremiumPlayer() {
   const { id } = useParams();

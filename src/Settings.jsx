@@ -5,7 +5,7 @@ import { FiArrowLeft, FiSettings } from "react-icons/fi";
 import { auth } from "./firebase";
 import "./Settings.css";
 
-const API_URL = "http://localhost:4242";
+const API_URL = "https://summarist.onrender.com";
 
 export default function Settings() {
   const navigate = useNavigate();
